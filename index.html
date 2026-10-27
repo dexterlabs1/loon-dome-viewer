@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark"><title>Loon Dome Viewer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M3 24a13 13 0 0 1 26 0Z' fill='none' stroke='%23f2b544' stroke-width='2.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true"></span><div><strong>Loon Dome Viewer</strong><small>National Loon Center · E.3 projection dome</small></div></div>
+    <div class="actions">
+      <label class="button" title="Load a flat video or still image (or drop it on the view)">Load media<input id="file" type="file" accept="video/*,image/*" hidden></label>
+      <button id="pattern" title="Return to the test pattern">Test pattern</button>
+      <div id="xr-entry"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage-wrap">
+      <div class="view-switch" role="group" aria-label="Layout">
+        <button data-view="dome" class="active">Dome</button><button data-view="split">Dome + output</button><button data-view="output">Output</button>
+      </div>
+      <div id="stage">
+        <canvas id="canvas"></canvas>
+        <div id="dome-view" class="panel"><span class="panel-label">Dome in the lobby</span><span class="panel-hint">Drag to orbit · scroll to zoom · right-drag to pan</span><div id="source-view" class="inset"><span class="panel-label">Flat source</span></div></div>
+        <div id="output-view" class="panel"><span class="panel-label">Projector output · domemaster</span><span class="panel-hint">Bottom of circle = front of dome</span></div>
+        <div id="drop" hidden>Drop video or image</div>
+      </div>
+      <div class="transport" id="transport" hidden>
+        <button id="play" class="icon" title="Play / pause (Space)">Pause</button>
+        <input id="scrub" type="range" min="0" max="1" step="0.001" value="0" aria-label="Position">
+        <span id="time" class="mono">0:00 / 0:00</span>
+        <button id="mute" title="Mute">Unmute</button>
+      </div>
+      <p id="status" role="status"></p>
+    </section>
+
+    <aside>
+      <section>
+        <h2>Mapping</h2>
+        <div class="segmented" id="modes" role="group" aria-label="Mapping mode">
+          <button data-mode="stretch">Stretch</button><button data-mode="window">Window</button><button data-mode="fill">Window + fill</button>
+        </div>
+        <p id="mode-note" class="note"></p>
+        <div id="window-controls">
+          <label>Direction <output for="winAz"></output><input id="winAz" type="range" min="-180" max="180" step="1"></label>
+          <label>Height <output for="winEl"></output><input id="winEl" type="range" min="0" max="90" step="1"></label>
+          <label>Size <output for="winFov"></output><input id="winFov" type="range" min="30" max="150" step="1"></label>
+          <div id="fill-controls">
+            <label>Edge softness <output for="feather"></output><input id="feather" type="range" min="0" max="0.4" step="0.01"></label>
+            <label>Fill brightness <output for="fillAmount"></output><input id="fillAmount" type="range" min="0" max="1" step="0.05"></label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="row">Caption <label class="toggle"><input id="captionOn" type="checkbox"><span>Show</span></label></h2>
+        <div id="caption-controls">
+          <input id="captionText" type="text" aria-label="Caption text" maxlength="160">
+          <label>Direction <output for="capAz"></output><input id="capAz" type="range" min="-180" max="180" step="1"></label>
+          <label>Height <output for="capEl"></output><input id="capEl" type="range" min="0" max="80" step="1"></label>
+          <label>Text size <output for="capSize"></output><input id="capSize" type="range" min="1" max="12" step="0.5"></label>
+        </div>
+      </section>
+
+      <details>
+        <summary>Venue</summary>
+        <p class="note">Estimated from the SketchUp lobby view until the spec sheet arrives. Raise the eye height to view from the stair.</p>
+        <label>Dome diameter <output for="domeDiameter"></output><input id="domeDiameter" type="range" min="3" max="25" step="0.1"></label>
+        <label>Dome rise (depth) <output for="domeRise"></output><input id="domeRise" type="range" min="0.2" max="5" step="0.05"></label>
+        <label>Ceiling height at rim <output for="ceilingHeight"></output><input id="ceilingHeight" type="range" min="2.5" max="15" step="0.1"></label>
+        <label>Visitor eye height <output for="eyeHeight"></output><input id="eyeHeight" type="range" min="0.5" max="6" step="0.05"></label>
+        <label>Visitor distance from centre <output for="moveBack"></output><input id="moveBack" type="range" min="0" max="12" step="0.1"></label>
+        <div class="row gap">
+          <label class="button small">Load OBJ model<input id="venue-file" type="file" accept=".obj" hidden></label>
+          <select id="venue-units" aria-label="Model units"><option value="1">metres</option><option value="0.3048">feet</option><option value="0.0254">inches</option><option value="0.01">cm</option></select>
+        </div>
+      </details>
+
+      <section class="tools">
+        <label class="toggle"><input id="guides" type="checkbox"><span>Orientation guides</span></label>
+        <div class="row gap"><button id="visitor" title="See the dome from the visitor's eyes (V)">Visitor view</button><button id="recenter" title="Back to the lobby overview (R)">Overview</button><button id="download" title="Save the current domemaster frame as PNG">Save output PNG</button><button id="reset" title="Restore default settings">Reset</button></div>
+      </section>
+    </aside>
+  </main>
+  <video id="video" playsinline loop muted crossorigin="anonymous" hidden></video>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
